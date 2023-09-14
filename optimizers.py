@@ -32,7 +32,7 @@ class GradientDescendent(Optimizer):
         super().__init__(lr)
 
 
-    def update(self, t=0, weight=0, bias=0, dw=0, db=0) -> Tuple[np.array, np.array]:
+    def update(self, layer:NeuronMetaClass, t:int=1) -> Tuple[np.array, np.array]:
 
         """
             Update the weights using Gradient Descendent
@@ -57,10 +57,7 @@ class GradientDescendent(Optimizer):
                 weight, bias = gd.update(weight=weight, bias=bias, dw=dw, db=db)
         """
 
-        weight = weight - (self.lr * dw)
-        bias = bias - (self.lr * db)
-        # return weight, bias
-        return weight
+        layer.weights = layer.weights - (self.lr * layer.d_J)
 
 
 class Adam(Optimizer):
@@ -95,50 +92,6 @@ class Adam(Optimizer):
         self.beta2 = beta2
         self.epsilon = epsilon
 
-
-    def deprecated_update(self, t=0, weight=0, bias=0, dw=0, db=0) -> Tuple[np.array, np.array]:
-
-        """
-            Update the weights using adam
-
-            Parameters
-            ----------
-                t : int
-                    The epoch number
-                weight : np.array
-                    The weights array
-                bias : np.array
-                    The bias array
-                dw: np.array
-                    The weights gradient vector array 
-                db: np.array
-                    The bias gradient vector array 
-
-            Returns
-            -------
-                (weight, bias)
-                    A tuple containing the new weights and bias
-            Examples
-            --------
-                weight, bias = adam.update(epoch, weight=weight, bias=bias, dw=dw, db=db)
-        """
-
-        self.momentum_weights = self.beta1*self.momentum_weights + (1-self.beta1)*dw
-        # self.momentum_bias = self.beta1*self.momentum_bias + (1-self.beta1)*db
-
-        self.velocity_weights = self.beta2*self.velocity_weights + (1-self.beta2)*(dw**2)
-        # self.velocity_bias = self.beta2*self.velocity_bias + (1-self.beta2)*(db)
-
-        momentum_weights_corr = self.momentum_weights/(1-self.beta1**t)
-        # momentum_bias_corr = self.momentum_bias/(1-self.beta1**t)
-        velocity_weights_corr = self.velocity_weights/(1-self.beta2**t)
-        # velocity_bias_corr = self.velocity_bias/(1-self.beta2**t)
-
-        weight = weight - self.lr*(momentum_weights_corr/(np.sqrt(velocity_weights_corr)+self.epsilon))
-        # bias = bias - self.lr*(momentum_bias_corr/(np.sqrt(velocity_bias_corr)+self.epsilon))
-        # return weight, bias
-        return weight
-    
 
     def update(self, layer:NeuronMetaClass, t:int=1) -> Tuple[np.array, np.array]:
 

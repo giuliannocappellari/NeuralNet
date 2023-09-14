@@ -17,6 +17,21 @@ class ActivationFunc(ABC):
       ... 
 
 
+class LinearActivation(ActivationFunc):
+    
+  @staticmethod
+  def func(s:np.array) -> float:
+    return s
+
+  @staticmethod
+  def grad(s:np.array) -> np.array:
+    return np.ones_like(s)
+
+  @staticmethod
+  def get_delta(d_J_o:np.array, d_o_s:np.array):
+    return d_J_o * d_o_s
+
+
 class Sigmoid(ActivationFunc):
 
   @staticmethod
@@ -42,54 +57,71 @@ class Relu(ActivationFunc):
   @staticmethod
   def func(s:np.array) -> np.array:
     return np.maximum(0,s)
-
+  
+  @staticmethod
   def grad(s:np.array) -> np.array:
     return np.greater(s, 0).astype(int)
   
-  #TODO
   @staticmethod
-  def get_delta():
-     pass
+  def get_delta(d_J_o:np.array, d_o_s:np.array):
+    return d_J_o * d_o_s
 
 
 class Tanh(ActivationFunc):
 
   @staticmethod
-  def tanh(s:np.array) -> np.array:
+  def func(s:np.array) -> np.array:
     return np.tanh(s)
 
   @staticmethod
-  def tanh_grad(s:np.array) -> np.array:
+  def grad(s:np.array) -> np.array:
     return 1.-np.tanh(s)**2
 
-  #TODO
   @staticmethod
-  def get_delta():
-     pass
+  def get_delta(d_J_o:np.array, d_o_s:np.array):
+    return d_J_o * d_o_s
 
 
 class Softmax(ActivationFunc):
 
-  @classmethod
-  def softmax(x):
+  @staticmethod
+  def func(x):
       e_x = np.exp(x - np.max(x))
       return e_x / e_x.sum(axis=0)
 
-  @classmethod
-  def softmax_grad(s): 
-      jacobian_m = np.diag(s)
-      for i in range(len(jacobian_m)):
-          for j in range(len(jacobian_m)):
-              if i == j:
-                  jacobian_m[i][j] = s[i] * (1-s[i])
-              else: 
-                  jacobian_m[i][j] = -s[i] * s[j]
+  @staticmethod
+  def grad(s):
+      print(s)
+      N = s.shape[-1]
+      jacobian_m = np.zeros((N, N))
+      print(jacobian_m)
+      for i in range(N):
+        for j in range(N):
+              jacobian_m[i, j] = s[i, 0] * (np.float32(i == j) - s[j, 0])
       return jacobian_m
   
+  @staticmethod
   def get_delta(d_J_o:np.array, d_o_s:np.array):
       return np.sum(d_J_o * d_o_s, keepdims=True, axis=1)
   
 
+class LeakyRelu(ActivationFunc):
+   
+  @staticmethod
+  def func(s:np.array) -> np.array:
+    return np.where(s > 0, s, s * 0.01)  
+
+  @staticmethod
+  def grad(s:np.array, alpha=0.01) -> np.array:
+    dx = np.ones_like(s)
+    dx[s < 0] = alpha
+    return dx
+  
+  @staticmethod
+  def get_delta(d_J_o:np.array, d_o_s:np.array):
+    return d_J_o * d_o_s
+  
+
 if __name__ == "__main__":
-  af = Sigmoid()
-  print(af.func(np.array([1,2,3])))
+  s = Softmax()
+  print(s.func(np.array([1.8,0.7,-10])))

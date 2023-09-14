@@ -9,13 +9,19 @@ from optimizers import *
 
 class NN:
 
-    def __init__(self, layers:List[NeuronMetaClass], lr:float=0.01, optimizer:Optimizer=Adam, loss:LossFunc=MSE) -> None:
+    def __init__(self, layers:List[NeuronMetaClass], lr:float=0.01, optimizer:Optimizer=Adam, loss:LossFunc=MSE, batchsize:int=None) -> None:
         
         self.layers = layers
         self.lr = lr
         self.loss_value = 0
         self.loss = loss
         self.optimizer = optimizer
+        self.batch_size = batchsize
+
+
+    def zero_grad(self, input_shape):
+        for layer in self.layers:
+            layer.zero_grad(input_shape)
     
 
     def forward(self, x:np.array) -> None:
@@ -37,16 +43,16 @@ class NN:
             if i == (len(self.layers) - 1):
                 d_J_o = self.loss.grad(self.layers[i].out, y)
                 d_o_s = self.layers[i].activation_func.grad(self.layers[i].out)
-                self.layers[i].delta = d_J_o * d_o_s
-                self.layers[i].d_J = np.dot(self.layers[i].delta, self.layers[i-1].out.T)
+                self.layers[i].delta = self.layers[i].activation_func.get_delta(d_J_o, d_o_s) + self.layers[i].delta
+                self.layers[i].d_J = np.dot(self.layers[i].delta, self.layers[i-1].out.T) + self.layers[i].d_J
             elif i == 0:
                 d_o_s = self.layers[i].activation_func.grad(self.layers[i].out)
-                self.layers[i].delta = np.dot(self.layers[i+1].weights.T, self.layers[i+1].delta) * d_o_s
-                self.layers[i].d_J = np.dot(self.layers[i].delta, X.T)
+                self.layers[i].delta = self.layers[i].activation_func.get_delta(np.dot(self.layers[i+1].weights.T, self.layers[i+1].delta), d_o_s) + self.layers[i].delta
+                self.layers[i].d_J = np.dot(self.layers[i].delta, X.T) + self.layers[i].d_J
             else:
                 d_o_s = self.layers[i].activation_func.grad(self.layers[i].out)
-                self.layers[i].delta = np.dot(self.layers[i+1].weights.T, self.layers[i+1].delta) * d_o_s
-                self.layers[i].d_J = np.dot(self.layers[i].delta, self.layers[i-1].out.T)
+                self.layers[i].delta = self.layers[i].activation_func.get_delta(np.dot(self.layers[i+1].weights.T, self.layers[i+1].delta), d_o_s) + self.layers[i].delta
+                self.layers[i].d_J = np.dot(self.layers[i].delta, self.layers[i-1].out.T) + self.layers[i].d_J
 
 
     def optimize(self, epoch:int):
@@ -55,32 +61,43 @@ class NN:
             self.optimizer.update(t=epoch, layer=layer)
 
 
-    def train(self, X, y, epochs):
+    def train(self, X, y, epochs, batch_size):
 
         for epoch in range(1, epochs+1):
-            self.forward(X)
-            self.compute_loss(self.layers[-1].out, y)
-            self.backward(X, y)
+            self.zero_grad(batch_size)
+            for batch in range(0, X.shape[1], batch_size):
+                print(batch)
+                self.forward(X[batch:(batch+batch_size)].T)
+                self.compute_loss(self.layers[-1].out, y[batch:(batch+batch_size)])
+                self.backward(X[batch:(batch+batch_size)].T, y[batch:(batch+batch_size)])
             self.optimize(epoch)
             print("-"*100)
             print(f"{' '*40}EPOCH: {epoch}")
             print("-"*100)
-            print(f'Loss {self.loss_value}')
+            print(f'Mean Loss {sum(self.loss_value[0])/self.loss_value[0].shape[0]}')
             print(f"Out {self.layers[-1].out}")
 
 
-x = np.array([[0.5, 0.1],[0.2, 0.6]]).T
-y = [0.7, 0.8]
+x = np.array([[0.5, 0.1],[0.2, 0.6],[0.5, 0.1],[0.2, 0.6], [0.5, 0.1],[0.2, 0.6],
+              [0.5, 0.1],[0.2, 0.6], [0.5, 0.1],[0.2, 0.6], [0.5, 0.1],[0.2, 0.6]])
+y = [0.7, 0.8, 0.7, 0.8, 0.7, 0.8, 0.7, 0.8, 0.7, 0.8, 0.7, 0.8, 0.7, 0.8, 0.7, 0.8,
+     0.7, 0.8, 0.7, 0.8, 0.7, 0.8, 0.7, 0.8]
+# x = np.array([[0.5, 0.1],[0.2, 0.6],[0.5, 0.1],[0.2, 0.6], [0.5, 0.1],[0.2, 0.6],
+#               [0.5, 0.1],[0.2, 0.6], [0.5, 0.1],[0.2, 0.6], [0.5, 0.1],[0.2, 0.6]])
+# y = [7,8,7,8,7,8,7,8,7,8,7,8,7,8,7,8,7,8,7,8,7,8,7,8]
 adam = Adam()
-mse = MSE()
 gd = GradientDescendent()
-nn = NN(layers=[Linear(x.shape[0], 2, Sigmoid()),
-                Linear(2, 3, Sigmoid()),
-                Linear(3, 4, Sigmoid()),
-                Linear(4, 3, Sigmoid()),
-                Linear(3, 2, Sigmoid()),
-                Linear(2, 1, Sigmoid()),
-                ],
-                optimizer=adam,
-                loss=mse)
-nn.train(x, y, 500)
+mse = MSE()
+bce = BinaryCrossEntropy()
+funcs = [LinearActivation, Sigmoid, Tanh, Relu, LeakyRelu]
+for func in funcs:
+    nn = NN(layers=[Linear(x.shape[1], 2, func()),
+                    Linear(2, 3, func()),
+                    Linear(3, 4, func()),
+                    Linear(4, 3, func()),
+                    Linear(3, 2, func()),
+                    Linear(2, 1, func()),
+                    ],
+                    optimizer=gd,
+                    loss=mse)
+    nn.train(x, y, 5, 12)
