@@ -45,14 +45,17 @@ class NN:
                 d_o_s = self.layers[i].activation_func.grad(self.layers[i].out)
                 self.layers[i].delta = self.layers[i].activation_func.get_delta(d_J_o, d_o_s) + self.layers[i].delta
                 self.layers[i].d_J = np.dot(self.layers[i].delta, self.layers[i-1].out.T) + self.layers[i].d_J
+                self.layers[i].d_B = np.sum(self.layers[i].delta)
             elif i == 0:
                 d_o_s = self.layers[i].activation_func.grad(self.layers[i].out)
                 self.layers[i].delta = self.layers[i].activation_func.get_delta(np.dot(self.layers[i+1].weights.T, self.layers[i+1].delta), d_o_s) + self.layers[i].delta
                 self.layers[i].d_J = np.dot(self.layers[i].delta, X.T) + self.layers[i].d_J
+                self.layers[i].d_B = np.sum(self.layers[i].delta)
             else:
                 d_o_s = self.layers[i].activation_func.grad(self.layers[i].out)
                 self.layers[i].delta = self.layers[i].activation_func.get_delta(np.dot(self.layers[i+1].weights.T, self.layers[i+1].delta), d_o_s) + self.layers[i].delta
                 self.layers[i].d_J = np.dot(self.layers[i].delta, self.layers[i-1].out.T) + self.layers[i].d_J
+                self.layers[i].d_B = np.sum(self.layers[i].delta)
 
 
     def optimize(self, epoch:int):
@@ -62,11 +65,9 @@ class NN:
 
 
     def train(self, X, y, epochs, batch_size):
-
         for epoch in range(1, epochs+1):
             self.zero_grad(batch_size)
             for batch in range(0, X.shape[1], batch_size):
-                print(batch)
                 self.forward(X[batch:(batch+batch_size)].T)
                 self.compute_loss(self.layers[-1].out, y[batch:(batch+batch_size)])
                 self.backward(X[batch:(batch+batch_size)].T, y[batch:(batch+batch_size)])
@@ -98,6 +99,6 @@ for func in funcs:
                     Linear(3, 2, func()),
                     Linear(2, 1, func()),
                     ],
-                    optimizer=gd,
+                    optimizer=adam,
                     loss=mse)
-    nn.train(x, y, 5, 12)
+    nn.train(x, y, 2, 12)

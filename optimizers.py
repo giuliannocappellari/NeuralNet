@@ -56,8 +56,8 @@ class GradientDescendent(Optimizer):
             --------
                 weight, bias = gd.update(weight=weight, bias=bias, dw=dw, db=db)
         """
-
         layer.weights = layer.weights - (self.lr * layer.d_J)
+        layer.bias = layer.bias - (self.lr * layer.d_B)
 
 
 class Adam(Optimizer):
@@ -84,10 +84,6 @@ class Adam(Optimizer):
         """
 
         super().__init__(lr)
-        # self.momentum_weights = 0
-        # self.velocity_weights = 0
-        # self.momentum_bias = 0
-        # self.velocity_bias = 0
         self.beta1 = beta1
         self.beta2 = beta2
         self.epsilon = epsilon
@@ -119,21 +115,21 @@ class Adam(Optimizer):
             --------
                 weight, bias = adam.update(epoch, weight=weight, bias=bias, dw=dw, db=db)
         """
-
         layer.momentum_weights = self.beta1*layer.momentum_weights + ((1-self.beta1)*layer.d_J)
-        # self.momentum_bias = self.beta1*self.momentum_bias + (1-self.beta1)*db
-
+        layer.momentum_bias = self.beta1*layer.momentum_bias + ((1-self.beta1)*layer.d_B)
         layer.velocity_weights = self.beta2*layer.velocity_weights + ((1-self.beta2)*(layer.d_J**2))
-        # self.velocity_bias = self.beta2*self.velocity_bias + (1-self.beta2)*(db)
-
+        layer.velocity_bias = self.beta2*layer.velocity_bias + ((1-self.beta2)*(layer.d_B**2))
+        # print(t)
         momentum_weights_corr = layer.momentum_weights/(1-self.beta1**t)
-        # momentum_bias_corr = self.momentum_bias/(1-self.beta1**t)
+        momentum_bias_corr = layer.momentum_bias/(1-self.beta1**t)
         velocity_weights_corr = layer.velocity_weights/(1-self.beta2**t)
-        # velocity_bias_corr = self.velocity_bias/(1-self.beta2**t)
-
+        velocity_bias_corr = layer.velocity_bias/(1-self.beta2**t)
+        # print(t)
         layer.weights = layer.weights - self.lr*(momentum_weights_corr/(np.sqrt(velocity_weights_corr)+self.epsilon))
-        # bias = bias - self.lr*(momentum_bias_corr/(np.sqrt(velocity_bias_corr)+self.epsilon))
-    
+        layer.bias = layer.bias - self.lr*(momentum_bias_corr/(np.sqrt(velocity_bias_corr)+self.epsilon))
+        # print(t)
+        # exit()
+
 
 if __name__ == "__main__":
     adam = Adam()

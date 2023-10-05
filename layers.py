@@ -1,6 +1,6 @@
 import numpy as np
 from typing import Callable
-from initialize import initialize_weights
+from initialize import *
 from activation_functions import Sigmoid, ActivationFunc
 from abc import ABC
 
@@ -13,7 +13,7 @@ class NeuronMetaClass(ABC):
         self.neurons = neurons
         self.activation_func = activation_func
         self.weights = initialize_weights(neurons, input_size, activation_func)
-        self.bias = 0
+        self.bias = initialize_bias()
         self.momentum_weights = 0
         self.velocity_weights = 0
         self.momentum_bias = 0
@@ -23,6 +23,7 @@ class NeuronMetaClass(ABC):
     def zero_grad(self, input_len):
         self.delta = np.zeros((self.neurons, input_len))
         self.d_J = np.zeros((self.neurons, self.input_size))
+        self.d_B = np.zeros((1, 1))
 
 
 class Linear(NeuronMetaClass):
