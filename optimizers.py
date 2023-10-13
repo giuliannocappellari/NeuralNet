@@ -119,16 +119,15 @@ class Adam(Optimizer):
         layer.momentum_bias = self.beta1*layer.momentum_bias + ((1-self.beta1)*layer.d_B)
         layer.velocity_weights = self.beta2*layer.velocity_weights + ((1-self.beta2)*(layer.d_J**2))
         layer.velocity_bias = self.beta2*layer.velocity_bias + ((1-self.beta2)*(layer.d_B**2))
-        # print(t)
+        
         momentum_weights_corr = layer.momentum_weights/(1-self.beta1**t)
         momentum_bias_corr = layer.momentum_bias/(1-self.beta1**t)
         velocity_weights_corr = layer.velocity_weights/(1-self.beta2**t)
         velocity_bias_corr = layer.velocity_bias/(1-self.beta2**t)
-        # print(t)
+        
         layer.weights = layer.weights - self.lr*(momentum_weights_corr/(np.sqrt(velocity_weights_corr)+self.epsilon))
         layer.bias = layer.bias - self.lr*(momentum_bias_corr/(np.sqrt(velocity_bias_corr)+self.epsilon))
-        # print(t)
-        # exit()
+        
 
 
 if __name__ == "__main__":
