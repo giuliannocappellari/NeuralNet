@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 
 class NN:
 
-    def __init__(self, layers:List[NeuronMetaClass], lr:float=0.01, optimizer:Optimizer=Adam, loss:LossFunc=MSE, batchsize:int=None) -> None:
+    def __init__(self, layers:List[NeuronMetaClass], lr:float=0.1, optimizer:Optimizer=Adam, loss:LossFunc=MSE, batchsize:int=None) -> None:
         
         self.layers = layers
         self.lr = lr
@@ -24,13 +24,16 @@ class NN:
         self.activations_test = []  # para plotar os histogramas
 
         self.train_losses = [] # para os plots
-        self.val_losses = [] # para os plots
+        self.test_losses = [] # para os plots
 
         self.train_accuracies = []
-        self.val_accuracies = []
+        self.test_accuracies = []
+        
 
 
     def zero_grad(self, input_shape):
+        self.loss_value = []
+        self.loss_value_test = []
         for layer in self.layers:
             layer.zero_grad(input_shape)
 
@@ -50,6 +53,7 @@ class NN:
             x = layer.activation_func.func(s)
             layer.out = x
             self.activations_test.append(x)  # para o histograma
+        
 
 
     def compute_loss(self, y_hat:np.array, y:np.array) -> None:
@@ -96,32 +100,30 @@ class NN:
                 self.forward(X_train[batch:(batch+batch_size)].T)
                 self.compute_loss(self.layers[-1].out, y_train[batch:(batch+batch_size)])
                 self.backward(X_train[batch:(batch+batch_size)].T, y_train[batch:(batch+batch_size)])
-                self.plot_histograms()  # histo
+                self.train_accuracies.append(self.calculate_accuracy(y_train[batch:(batch+batch_size)]))
+                # self.plot_histograms()  # histo
             # Avalie no conjunto de validação
             for batch in range(0, X_test.shape[1], batch_size):
                 self.forward_test(X_test[batch:(batch+batch_size)].T)
                 self.compute_loss_test(self.layers[-1].out, y_test[batch:(batch+batch_size)])
-
-            self.optimize(epoch)
+                self.test_accuracies.append(self.calculate_accuracy(y_test[batch:(batch+batch_size)]))
 
             # Após treinar no conjunto de treino
             self.train_losses.append(sum(self.loss_value))
-            self.val_losses.append(sum(self.loss_value))
+            self.test_losses.append(sum(self.loss_value))
 
+            self.optimize(epoch)
 
             print("-"*100)
             print(f"{' '*40}EPOCH: {epoch}")
             print("-"*100)
-            print(f'Mean Loss Train {sum(self.loss_value[0])/self.loss_value[0].shape[0]}')
-            print(f'Mean Loss Test {sum(self.loss_value_test[0])/self.loss_value_test[0].shape[0]}')
-
-            # # Após o treinamento de uma época
-            # self.train_accuracies.append(self.calculate_accuracy(X_train, y_train))
-            # self.val_accuracies.append(self.calculate_accuracy(X_test, y_test))
+            print(f'Mean Loss Train {sum(self.loss_value)/len(self.loss_value)}')
+            print(f'Mean Loss Test {sum(self.loss_value_test)/len(self.loss_value_test)}')
+            print(f'Mean Train Accuracy {sum(self.train_accuracies)/len(self.train_accuracies)}')
+            print(f'Mean Test Accuracy {sum(self.test_accuracies)/len(self.test_accuracies)}')
 
 
-    def calculate_accuracy(self, X, y):
-        self.forward(X)
+    def calculate_accuracy(self, y):
         predictions = np.round(self.layers[-1].out)
         accuracy = np.mean(predictions == y)
         return accuracy
@@ -158,54 +160,37 @@ class NN:
         return model
 
 
-def plot_cost_vs_epoch(nn):
-        epochs = range(1, len(nn.train_losses) + 1)
-        plt.plot(epochs, nn.train_losses, label='Treino')
-        plt.plot(epochs, nn.val_losses, label='Validação')
-        plt.xlabel('Épocas')
-        plt.ylabel('Função de Custo')
-        plt.title('Função de Custo vs Época')
-        plt.legend()
-        plt.show()
+if __name__ == "__main__":
+    x = np.array([[0.5, 0.1],[0.2, 0.6],[0.5, 0.1],[0.2, 0.6], [0.5, 0.1],[0.2, 0.6],
+                [0.5, 0.1],[0.2, 0.6], [0.5, 0.1],[0.2, 0.6], [0.5, 0.1],[0.2, 0.6]])
 
-def plot_accuracies(nn):
-    epochs = range(1, len(nn.train_accuracies) + 1)
-    plt.plot(epochs, nn.train_accuracies, '-o', label='Training Accuracy')
-    plt.plot(epochs, nn.val_accuracies, '-o', label='Validation Accuracy')
-    plt.title('Training and Validation Accuracy')
-    plt.xlabel('Epochs')
-    plt.ylabel('Accuracy')
-    plt.legend()
-    plt.show()
+    y = [0.7, 0.8, 0.7, 0.8, 0.7, 0.8, 0.7, 0.8, 0.7, 0.8, 0.7, 0.8]
 
-x = np.array([[0.5, 0.1],[0.2, 0.6],[0.5, 0.1],[0.2, 0.6], [0.5, 0.1],[0.2, 0.6],
-              [0.5, 0.1],[0.2, 0.6], [0.5, 0.1],[0.2, 0.6], [0.5, 0.1],[0.2, 0.6]])
-y = [0.7, 0.8, 0.7, 0.8, 0.7, 0.8, 0.7, 0.8, 0.7, 0.8, 0.7, 0.8, 0.7, 0.8, 0.7, 0.8,
-     0.7, 0.8, 0.7, 0.8, 0.7, 0.8, 0.7, 0.8]
-# x = np.array([[0.5, 0.1],[0.2, 0.6],[0.5, 0.1],[0.2, 0.6], [0.5, 0.1],[0.2, 0.6],
-#               [0.5, 0.1],[0.2, 0.6], [0.5, 0.1],[0.2, 0.6], [0.5, 0.1],[0.2, 0.6]])
-# y = [7,8,7,8,7,8,7,8,7,8,7,8,7,8,7,8,7,8,7,8,7,8,7,8]
-adam = Adam()
-gd = GradientDescendent()
-mse = MSE()
-bce = BinaryCrossEntropy()
-# funcs = [LinearActivation, Sigmoid, Tanh, Relu, LeakyRelu]
-funcs = [Relu]
-for func in funcs:
-    # loaded_nn = NN.load_model('model.pkl')
-    nn = NN(layers=[Linear(x.shape[1], 2, func(), init_mode="xavier_uniform"),
-                    Linear(2, 3, func(), init_mode="xavier_uniform"),
-                    Linear(3, 4, func(), init_mode="xavier_uniform"),
-                    Linear(4, 3, func(), init_mode="xavier_uniform"),
-                    Linear(3, 2, func(), init_mode="xavier_uniform"),
-                    Linear(2, 1, func(), init_mode="xavier_uniform"),
-                    ],
-                    optimizer=adam,
-                    loss=mse)
-    nn.train(x, y, x, y, 2, 12)
-    nn.save_model('model.pkl')
+    x_test = np.array([[0.5, 0.1],[0.2, 0.6],[0.5, 0.1],[0.2, 0.6], [0.5, 0.1],[0.2, 0.6]])
 
-    # plot_accuracies(nn)
+    y_test = [0.7, 0.8, 0.7, 0.8, 0.7, 0.8]
 
-    # Após treinar a rede neural
-    # plot_cost_vs_epoch(nn)
+    adam = Adam()
+    gd = GradientDescendent()
+    mse = MSE()
+    bce = BinaryCrossEntropy()
+    funcs = [Relu]
+
+    for func in funcs:
+        # loaded_nn = NN.load_model('model.pkl')
+        nn = NN(layers=[Linear(x.shape[1], 2, func(), init_mode="xavier_uniform"),
+                        Linear(2, 3, func(), init_mode="xavier_uniform"),
+                        Linear(3, 4, func(), init_mode="xavier_uniform"),
+                        Linear(4, 3, func(), init_mode="xavier_uniform"),
+                        Linear(3, 2, func(), init_mode="xavier_uniform"),
+                        Linear(2, 1, func(), init_mode="xavier_uniform"),
+                        ],
+                        optimizer=adam,
+                        loss=mse)
+        nn.train(x, y, x_test, y_test, 120, 12)
+        nn.save_model('model.pkl')
+
+        # plot_accuracies(nn)
+
+        # Após treinar a rede neural
+        # plot_cost_vs_epoch(nn)

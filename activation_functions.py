@@ -121,7 +121,3 @@ class LeakyRelu(ActivationFunc):
   def get_delta(d_J_o:np.array, d_o_s:np.array):
     return d_J_o * d_o_s
   
-
-if __name__ == "__main__":
-  s = Softmax()
-  print(s.func(np.array([1.8,0.7,-10])))
