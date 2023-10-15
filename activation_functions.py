@@ -86,23 +86,17 @@ class Softmax(ActivationFunc):
 
   @staticmethod
   def func(x):
-      e_x = np.exp(x - np.max(x))
-      return e_x / e_x.sum(axis=0)
+    e_x = np.exp(x - np.max(x))
+    return e_x / e_x.sum(axis=0)
 
   @staticmethod
   def grad(s):
-      print(s)
-      N = s.shape[-1]
-      jacobian_m = np.zeros((N, N))
-      print(jacobian_m)
-      for i in range(N):
-        for j in range(N):
-              jacobian_m[i, j] = s[i, 0] * (np.float32(i == j) - s[j, 0])
-      return jacobian_m
+    p = Softmax.func(s)
+    return p * (1 - p)
   
   @staticmethod
   def get_delta(d_J_o:np.array, d_o_s:np.array):
-      return np.sum(d_J_o * d_o_s, keepdims=True, axis=1)
+    return np.sum(d_J_o * d_o_s, keepdims=True, axis=1)
   
 
 class LeakyRelu(ActivationFunc):

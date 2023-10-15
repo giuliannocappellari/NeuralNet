@@ -10,9 +10,14 @@ import matplotlib.pyplot as plt
 
 class NN:
 
-    def __init__(self, layers:List[NeuronMetaClass], lr:float=0.1, optimizer:Optimizer=Adam, loss:LossFunc=MSE, batchsize:int=None) -> None:
+    def __init__(self, first_layers:List[NeuronMetaClass]=None,  hidden_states:Tuple[int,int,ActivationFunc]=None, 
+                 final_layers:List[NeuronMetaClass]=None, lr:float=0.1, optimizer:Optimizer=Adam, loss:LossFunc=MSE, 
+                 batchsize:int=None, seed:int=1234) -> None:
         
-        self.layers = layers
+        self.layers = []
+        self.out_train =[]
+        self.out_test =[]
+        self.compile(first_layers, hidden_states, final_layers)
         self.lr = lr
         self.loss_value = []
         self.loss_value_test = []
@@ -28,7 +33,32 @@ class NN:
 
         self.train_accuracies = []
         self.test_accuracies = []
-        
+
+        self.seed = np.random.seed(seed)
+
+
+    def zero_out(self):
+        self.out_train = []
+        self.out_test = []
+
+
+    def compile(self, first_layers:List[NeuronMetaClass],  hidden_states:Tuple[int,int,ActivationFunc], 
+                 final_layers:List[NeuronMetaClass]):
+
+        self.layers += first_layers
+        if hidden_states:
+            for i in range(hidden_states[0]):
+                self.layers.append(Linear(self.layers[-1].neurons, hidden_states[1], hidden_states[2]))
+        self.layers += final_layers
+
+
+    def get_model_params(self):
+        print("-"*100)
+        print(f"Your model have")
+        print("-"*100)
+        print(f"{len(self.layers)} Layers")
+        print(f"{sum([layer.neurons for layer in self.layers])} Neurons")
+        print(f"{sum([(layer.neurons * layer.input_size) + layer.neurons for layer in self.layers])} Params")
 
 
     def zero_grad(self, input_shape):
@@ -39,10 +69,21 @@ class NN:
 
 
     def forward(self, x:np.array) -> None:
+        i=0
         for layer in self.layers:
+            i+=1
             s = np.dot(layer.weights, x) + layer.bias
-            x = layer.activation_func.func(s)
+            # print(f"Layer {i} input is NaN {x}")
+            if layer.activation_func != Softmax:
+                x = layer.activation_func.func(s)
+            else:
+                x = Linear().func(s)
             layer.out = x
+            # print(f"Layer {i} out is NaN {x}")
+            # print(f"Layer {i} s is NaN {s}")
+            # print(f"Layer {i} weights {layer.weights}")
+            # if np.isnan(x).any():
+            #     exit()
             self.activations.append(x)  # para o histograma
     
 
@@ -52,12 +93,17 @@ class NN:
             s = np.dot(layer.weights, x) + layer.bias
             x = layer.activation_func.func(s)
             layer.out = x
-            self.activations_test.append(x)  # para o histograma
-        
+            # self.activations_test.append(x)  # para o histograma  
 
 
     def compute_loss(self, y_hat:np.array, y:np.array) -> None:
-
+        print(y_hat)
+        print(y)
+        if abs(self.loss.func(y_hat, y)) == 0:
+            print(abs(self.loss.func(y_hat, y)))
+            print(abs(self.loss.func(np.array(y_hat).flatten(), y)))
+            print(np.array(y_hat).flatten())
+            exit()
         self.loss_value.append(self.loss.func(y_hat, y))
 
     
@@ -72,6 +118,16 @@ class NN:
             if i == (len(self.layers) - 1):
                 d_J_o = self.loss.grad(self.layers[i].out, y)
                 d_o_s = self.layers[i].activation_func.grad(self.layers[i].out)
+                # if np.isnan(d_J_o).any():
+                #     print(f"d_J_o is NaN {d_J_o}")
+                #     print(f"d_o_s is NaN {d_o_s}")
+                #     print(f"out {self.layers[i].out}")
+                #     exit()
+                # if np.isnan(d_o_s).any():
+                #     print(f"d_o_s is NaN {d_o_s}")
+                #     print(f"d_J_o is NaN {d_J_o}")
+                #     print(f"out {self.layers[i].out}")
+                #     exit()
                 self.layers[i].delta = self.layers[i].activation_func.get_delta(d_J_o, d_o_s) + self.layers[i].delta
                 self.layers[i].d_J = np.dot(self.layers[i].delta, self.layers[i-1].out.T) + self.layers[i].d_J
                 self.layers[i].d_B = np.sum(self.layers[i].delta)
@@ -87,6 +143,7 @@ class NN:
                 self.layers[i].d_B = np.sum(self.layers[i].delta)
             self.gradients.append(self.layers[i].delta)  # histogramas
 
+
     def optimize(self, epoch:int):
 
         for layer in self.layers:
@@ -94,18 +151,35 @@ class NN:
 
 
     def train(self, X_train, y_train, X_test, y_test, epochs, batch_size):
+   
+        self.zero_grad(batch_size)
+        self.zero_out()
         for epoch in range(1, epochs+1):
-            self.zero_grad(batch_size)
-            for batch in range(0, X_train.shape[1], batch_size):
+            for batch in range(0, X_train.shape[0], batch_size):
                 self.forward(X_train[batch:(batch+batch_size)].T)
-                self.compute_loss(self.layers[-1].out, y_train[batch:(batch+batch_size)])
+                self.out_train += self.layers[-1].out.tolist()
+                self.compute_loss(np.array(self.layers[-1].out).reshape(1, batch_size, -1), y_train[batch:(batch+batch_size)])
                 self.backward(X_train[batch:(batch+batch_size)].T, y_train[batch:(batch+batch_size)])
                 self.train_accuracies.append(self.calculate_accuracy(y_train[batch:(batch+batch_size)]))
+                # if epoch >= 53:
+                #     for i in range(len(self.layers)):
+                #         print(f"Layer {i} weights {self.layers[i].weights}")
+                #         print(f"Layer {i} bias {self.layers[i].bias}")
+                #         print(f"Layer {i} momentum_weights {self.layers[i].momentum_weights}")
+                #         print(f"Layer {i} velocity_weights {self.layers[i].velocity_weights}")
+                #         print(f"Layer {i} momentum_bias {self.layers[i].momentum_bias}")
+                #         print(f"Layer {i} velocity_bias {self.layers[i].velocity_bias}")
+                #         print(f"Layer {i} delta {self.layers[i].delta}")
+                #         print(f"Layer {i} Gradiente pesos {self.layers[i].d_J}")
+                #         print(f"Layer {i} Gradiente bias {self.layers[i].d_B}")
+                #         print(f"Layer {i} out {self.layers[i].out}")
+                        
                 # self.plot_histograms()  # histo
             # Avalie no conjunto de validação
-            for batch in range(0, X_test.shape[1], batch_size):
+            for batch in range(0, X_test.shape[0], batch_size):
                 self.forward_test(X_test[batch:(batch+batch_size)].T)
-                self.compute_loss_test(self.layers[-1].out, y_test[batch:(batch+batch_size)])
+                self.out_test += self.layers[-1].out.tolist()
+                self.compute_loss_test(np.array(self.layers[-1].out).reshape(1, batch_size, -1), y_test[batch:(batch+batch_size)])
                 self.test_accuracies.append(self.calculate_accuracy(y_test[batch:(batch+batch_size)]))
 
             # Após treinar no conjunto de treino
@@ -113,19 +187,18 @@ class NN:
             self.test_losses.append(sum(self.loss_value))
 
             self.optimize(epoch)
-
             print("-"*100)
             print(f"{' '*40}EPOCH: {epoch}")
             print("-"*100)
-            print(f'Mean Loss Train {sum(self.loss_value)/len(self.loss_value)}')
-            print(f'Mean Loss Test {sum(self.loss_value_test)/len(self.loss_value_test)}')
+            print(f'Mean Loss Train {self.loss_value[-1]}')
+            print(f'Mean Loss Test {self.loss_value_test[-1]}')
             print(f'Mean Train Accuracy {sum(self.train_accuracies)/len(self.train_accuracies)}')
             print(f'Mean Test Accuracy {sum(self.test_accuracies)/len(self.test_accuracies)}')
 
 
     def calculate_accuracy(self, y):
-        predictions = np.round(self.layers[-1].out)
-        accuracy = np.mean(predictions == y)
+        predictions = np.round(Softmax().func(self.layers[-1].out))
+        accuracy = np.mean(predictions.T == y)
         return accuracy
 
     def plot_histograms(self):
@@ -157,40 +230,41 @@ class NN:
     def load_model(filename):
         with open(filename, 'rb') as file:
             model = pickle.load(file)
+        model.get_model_params()
         return model
 
 
-if __name__ == "__main__":
-    x = np.array([[0.5, 0.1],[0.2, 0.6],[0.5, 0.1],[0.2, 0.6], [0.5, 0.1],[0.2, 0.6],
-                [0.5, 0.1],[0.2, 0.6], [0.5, 0.1],[0.2, 0.6], [0.5, 0.1],[0.2, 0.6]])
+# if __name__ == "__main__":
+#     x = np.array([[0.5, 0.1],[0.2, 0.6],[0.5, 0.1],[0.2, 0.6], [0.5, 0.1],[0.2, 0.6],
+#                 [0.5, 0.1],[0.2, 0.6], [0.5, 0.1],[0.2, 0.6], [0.5, 0.1],[0.2, 0.6]])
 
-    y = [0.7, 0.8, 0.7, 0.8, 0.7, 0.8, 0.7, 0.8, 0.7, 0.8, 0.7, 0.8]
+#     y = [0.7, 0.8, 0.7, 0.8, 0.7, 0.8, 0.7, 0.8, 0.7, 0.8, 0.7, 0.8]
 
-    x_test = np.array([[0.5, 0.1],[0.2, 0.6],[0.5, 0.1],[0.2, 0.6], [0.5, 0.1],[0.2, 0.6]])
+#     x_test = np.array([[0.5, 0.1],[0.2, 0.6],[0.5, 0.1],[0.2, 0.6], [0.5, 0.1],[0.2, 0.6]])
 
-    y_test = [0.7, 0.8, 0.7, 0.8, 0.7, 0.8]
+#     y_test = [0.7, 0.8, 0.7, 0.8, 0.7, 0.8]
 
-    adam = Adam()
-    gd = GradientDescendent()
-    mse = MSE()
-    bce = BinaryCrossEntropy()
-    funcs = [Relu]
+#     adam = Adam()
+#     gd = GradientDescendent()
+#     mse = MSE()
+#     bce = BinaryCrossEntropy()
+#     funcs = [Relu]
 
-    for func in funcs:
-        # loaded_nn = NN.load_model('model.pkl')
-        nn = NN(layers=[Linear(x.shape[1], 2, func(), init_mode="xavier_uniform"),
-                        Linear(2, 3, func(), init_mode="xavier_uniform"),
-                        Linear(3, 4, func(), init_mode="xavier_uniform"),
-                        Linear(4, 3, func(), init_mode="xavier_uniform"),
-                        Linear(3, 2, func(), init_mode="xavier_uniform"),
-                        Linear(2, 1, func(), init_mode="xavier_uniform"),
-                        ],
-                        optimizer=adam,
-                        loss=mse)
-        nn.train(x, y, x_test, y_test, 120, 12)
-        nn.save_model('model.pkl')
+#     for func in funcs:
+#         # loaded_nn = NN.load_model('model.pkl')
+#         nn = NN(layers=[Linear(x.shape[1], 2, func(), init_mode="xavier_uniform"),
+#                         Linear(2, 3, func(), init_mode="xavier_uniform"),
+#                         Linear(3, 4, func(), init_mode="xavier_uniform"),
+#                         Linear(4, 3, func(), init_mode="xavier_uniform"),
+#                         Linear(3, 2, func(), init_mode="xavier_uniform"),
+#                         Linear(2, 1, func(), init_mode="xavier_uniform"),
+#                         ],
+#                         optimizer=adam,
+#                         loss=mse)
+#         nn.train(x.T(), y, x_test, y_test, 120, 12)
+#         nn.save_model('model.pkl')
 
-        # plot_accuracies(nn)
+#         # plot_accuracies(nn)
 
-        # Após treinar a rede neural
-        # plot_cost_vs_epoch(nn)
+#         # Após treinar a rede neural
+#         # plot_cost_vs_epoch(nn)

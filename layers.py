@@ -7,16 +7,13 @@ from abc import ABC
 
 class NeuronMetaClass(ABC):
 
-    def __init__(self, input_size:int, neurons:int, activation_func:ActivationFunc=Sigmoid) -> None:
+    def __init__(self, input_size:int, neurons:int, activation_func:ActivationFunc=Sigmoid, seed:int=1234) -> None:
         
         self.input_size = input_size
         self.neurons = neurons
         self.activation_func = activation_func
-        self.weights = initialize_weights(neurons, input_size, activation_func)
-
-
-
-        self.bias = initialize_bias()
+        self.weights = initialize_weights(neurons, input_size, activation_func, seed)
+        self.bias = initialize_bias(neurons)
         self.momentum_weights = 0
         self.velocity_weights = 0
         self.momentum_bias = 0

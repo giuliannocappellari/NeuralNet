@@ -17,9 +17,12 @@ class MSE(LossFunc):
 
     @staticmethod
     def func(y_hat:np.array, y:np.array):
-        y_hat = np.array([y_hat])
-        y = np.array([y])
-        return (1/(2*y_hat.shape[0]))*sum([(y_hat[i] - y[i])**2 for i in range(y_hat.shape[0])])
+        print("LOSS")
+        print(y_hat)
+        print(y)
+        print(np.mean((y - y_hat)**2))
+        print("LOSS")
+        return np.mean((y - y_hat)**2)
     
     @staticmethod
     def grad(y_hat:np.array, y:np.array):
@@ -36,4 +39,20 @@ class BinaryCrossEntropy(LossFunc):
     
     @staticmethod
     def grad(y_hat:np.array, y:np.array):
-        return (y_hat - y) / (y_hat * (1 - y_hat))
+        return (y_hat - y.T) / (y_hat * (1 - y_hat))
+
+
+class CrossEntropyLoss:
+    
+    @staticmethod
+    def func(y_true: np.array, y_pred: np.array) -> float:
+
+        epsilon = 1e-15
+        y_pred = np.clip(y_pred, epsilon, 1. - epsilon)
+        return -np.sum(y_true * np.log(y_pred))
+
+    @staticmethod
+    def grad(y_true: np.array, y_pred: np.array) -> np.array:
+        
+        return y_pred.T - y_true
+
