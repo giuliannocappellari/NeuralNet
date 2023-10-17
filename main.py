@@ -42,8 +42,8 @@ if __name__ == "__main__":
     
 
 
-    # X_train, X_test, y_train, y_test = load_iris()
-    X_train, X_test, y_train, y_test = load_MNIST(True)
+    X_train, X_test, y_train, y_test = load_iris()
+    # X_train, X_test, y_train, y_test = load_MNIST(True)
     adam = Adam()
     gd = GradientDescendent()
     cel = CrossEntropyLoss()
@@ -52,16 +52,31 @@ if __name__ == "__main__":
 
     nn = NN(first_layers=[
                         Linear(X_train.shape[1], 16, Relu(), initialize_weights=XavierNormal),
-                        Linear(16, 50, Sigmoid(), initialize_weights=XavierNormal),
+                        Linear(16, 50, Relu(), initialize_weights=XavierNormal),
                         ],
                         # hidden_states=(50,50, Sigmoid()),
-            final_layers=[Linear(50, 25, Sigmoid(), initialize_weights=XavierNormal),
-                          Linear(25, 10, Sigmoid(), initialize_weights=XavierNormal),
-                          Linear(10, 10, Sigmoid(), initialize_weights=XavierNormal),
+            final_layers=[Linear(50, 25, Relu(), initialize_weights=XavierNormal),
+                          Linear(25, 10, Relu(), initialize_weights=XavierNormal),
+                          Linear(10, 3, Sigmoid(), initialize_weights=XavierNormal),
             ],
             optimizer=adam,
             loss=mse,
-            lr=0.001)
+            lr=0.001, 
+            save_best_model=True,
+            model_name='iris_model.pkl')
+    
+    # nn = NN(first_layers=[
+    #                     Linear(X_train.shape[1], 16, Relu(), initialize_weights=XavierNormal),
+    #                     Linear(16, 50, Sigmoid(), initialize_weights=XavierNormal),
+    #                     ],
+    #                     # hidden_states=(50,50, Sigmoid()),
+    #         final_layers=[Linear(50, 25, Sigmoid(), initialize_weights=XavierNormal),
+    #                       Linear(25, 10, Sigmoid(), initialize_weights=XavierNormal),
+    #                       Linear(10, 10, Sigmoid(), initialize_weights=XavierNormal),
+    #         ],
+    #         optimizer=adam,
+    #         loss=mse,
+    #         lr=0.001)
     
     nn.train(X_train, y_train, X_test, y_test, 1000, X_test.shape[0])
 

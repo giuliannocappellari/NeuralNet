@@ -13,7 +13,7 @@ class NN:
 
     def __init__(self, first_layers:List[LayerMetaClass]=None,  hidden_states:Tuple[int,int,ActivationFunc]=None, 
                  final_layers:List[LayerMetaClass]=None, lr:float=0.1, optimizer:Optimizer=Adam, loss:LossFunc=MSE, 
-                 batchsize:int=None, seed:int=1234, save_best_model=True) -> None:
+                 batchsize:int=None, seed:int=1234, save_best_model:bool=True, model_name:str='NN.pkl') -> None:
         
         self.layers:List[LayerMetaClass] = []
         self._compile(first_layers, hidden_states, final_layers)
@@ -31,6 +31,7 @@ class NN:
         self.test_accuracies = []
         self._best_accuracy = 0
         self.save_best_model = save_best_model
+        self.model_name = model_name
 
 
     def _compile(self, first_layers:List[LayerMetaClass]=None,  hidden_states:Tuple[int,int,ActivationFunc]=None, 
@@ -109,7 +110,8 @@ class NN:
             self.optimizer.update(t=epoch, layer=layer)
 
     
-    def train(self, X_train, y_train, X_test, y_test, epochs, batch_size):
+    def train(self, X_train, y_train, X_test, y_test, 
+              epochs:int=100, batch_size:int=10, plot:bool=False):
 
         self._zero_grad(batch_size)
         for epoch in range(1, epochs+1):
@@ -132,7 +134,9 @@ class NN:
 
             self.train_losses.append(sum(self.loss_value))
             self.test_losses.append(sum(self.loss_value))
-            self.plot_histograms()  # histo
+
+            if plot:
+                self.plot_histograms()  # histo
 
             self.optimize(epoch)
 
@@ -150,10 +154,12 @@ class NN:
             if self.save_best_model:
                 if test_accuracy > self._best_accuracy:
                     self._best_accuracy = test_accuracy
-                    self.save_model("neural_net.pkl")
+                    self.save_model(self.model_name)
         
-        plot_cost_vs_epoch(self)
-        plot_accuracies(self)
+        print(f"The best accuracy is {self._best_accuracy}")
+        if plot:
+            plot_cost_vs_epoch(self)
+            plot_accuracies(self)
 
 
     def calculate_accuracy(self, y, y_hat):
