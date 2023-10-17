@@ -1,39 +1,87 @@
 import numpy as np
 from typing import Callable
-from activation_functions import Sigmoid
+from abc import ABC
 
 
-def initialize_weights(neurons:int, input_size:int, activation__func:Callable, seed:int=1234) -> np.array:
-    np.random.seed(seed)
-    return np.array([np.random.normal(0, 2/neurons, input_size) for i in range(neurons)])
+class WeightsInitialize(ABC):
 
-def he_normal(neurons:int, input_size:int, seed:int=1234) -> np.array:
-    np.random.seed(seed)
-    stddev = np.sqrt(2. / neurons)
-    return np.random.normal(0, stddev, (neurons, input_size))
+    def __init__(self, neurons:int, input_size:int, seed:int=1234) -> None:
+        self.input_size = input_size
+        self.neurons = neurons
+        self.seed = np.random.seed(seed)
 
-def he_uniform(neurons:int, input_size:int, seed:int=1234) -> np.array:
-    np.random.seed(seed)
-    limit = np.sqrt(6. / neurons)
-    return np.random.uniform(-limit, limit, (neurons, input_size))
+    def initialize_weights(self):
+        ...
 
-def xavier_normal(neurons:int, input_size:int, seed:int=1234) -> np.array:
-    np.random.seed(seed)
-    stddev = np.sqrt(2. / (neurons + input_size))
-    return np.random.normal(0, stddev, (neurons, input_size))
 
-def xavier_uniform(neurons:int, input_size:int, seed:int=1234) -> np.array:
-    np.random.seed(seed)
-    limit = np.sqrt(6. / (neurons + input_size))
-    return np.random.uniform(-limit, limit, (neurons, input_size))
+class HeNormal(WeightsInitialize):
 
-def normal(neurons:int, input_size:int, seed:int=1234) -> np.array:
-    np.random.seed(seed)
-    return np.random.normal(0, 1, (neurons, input_size))
+    def __init__(self, neurons: int, input_size: int, seed: int = 1234) -> None:
+        super().__init__(neurons, input_size, seed)
 
-def uniform(neurons:int, input_size:int, seed:int=1234) -> np.array:
-    np.random.seed(seed)
-    return np.random.uniform(-1, 1, (neurons, input_size))
+    def initialize_weights(self) -> np.array:
+        np.random.seed(self.seed)
+        stddev = np.sqrt(2. / self.neurons)
+        return np.random.normal(0, stddev, (self.neurons, self.input_size))
+    
 
-def initialize_bias(neurons:int) -> np.array:
-    return np.zeros((neurons,1))
+class HeUniform(WeightsInitialize):
+
+    def __init__(self, neurons: int, input_size: int, seed: int = 1234) -> None:
+        super().__init__(neurons, input_size, seed)
+
+    def initialize_weights(self) -> np.array:
+        np.random.seed(self.seed)
+        limit = np.sqrt(6. / self.neurons)
+        return np.random.uniform(-limit, limit, (self.neurons, self.input_size))
+
+
+class XavierNormal(WeightsInitialize):
+
+    def __init__(self, neurons: int, input_size: int, seed: int = 1234) -> None:
+        super().__init__(neurons, input_size, seed)
+
+    def initialize_weights(self) -> np.array:
+        np.random.seed(self.seed)
+        stddev = np.sqrt(2. / (self.neurons + self.input_size))
+        return np.random.normal(0, stddev, (self.neurons, self.input_size))
+
+
+class XavierUniform(WeightsInitialize):
+
+    def __init__(self, neurons: int, input_size: int, seed: int = 1234) -> None:
+        super().__init__(neurons, input_size, seed)
+
+    def initialize_weights(self) -> np.array:
+        np.random.seed(self.seed)
+        limit = np.sqrt(6. / (self.neurons + self.input_size))
+        return np.random.uniform(-limit, limit, (self.neurons, self.input_size))
+    
+
+class Normal(WeightsInitialize):
+
+    def __init__(self, neurons: int, input_size: int, seed: int = 1234) -> None:
+        super().__init__(neurons, input_size, seed)
+
+    def initialize_weights(self) -> np.array:
+        np.random.seed(self.seed)
+        return np.random.normal(0, 1, (self.neurons, self.input_size))
+
+
+class Uniform(WeightsInitialize):
+
+    def __init__(self, neurons: int, input_size: int, seed: int = 1234) -> None:
+        super().__init__(neurons, input_size, seed)
+
+    def initialize_weights(self) -> np.array:
+        np.random.seed(self.seed)
+        return np.random.uniform(-1, 1, (self.neurons, self.input_size))
+    
+    
+class InitializeBias():
+
+    def __init__(self, neurons:int) -> None:
+        self.neurons = neurons
+
+    def initialize_bias(self) -> np.array:
+        return np.zeros((self.neurons,1))
